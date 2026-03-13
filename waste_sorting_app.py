@@ -10,9 +10,12 @@ Usage:
 
 import argparse
 import math
+import os
 import time
 from collections import defaultdict
 from pathlib import Path
+
+os.environ["CUDA_VISIBLE_DEVICES"] = ""  # force CPU (local GPU/ROCm unsupported)
 
 import cv2
 import numpy as np

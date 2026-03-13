@@ -16,12 +16,21 @@ RUN_NAME    = "trash_v1"
 BASE_MODEL  = "yolo11n.pt"
 
 # ── Hyperparameters ────────────────────────────────────────────────────────────
-EPOCHS   = 100
+EPOCHS   = 50
 BATCH    = 16
 IMGSZ    = 640
 LR0      = 0.01
-PATIENCE = 20   # early-stopping patience (epochs without improvement)
+PATIENCE = 15   # early-stopping patience (epochs without improvement)
 DEVICE   = 0    # GPU device index (run via Colab, not locally)
+
+# ── Augmentation & regularization (important for small datasets) ───────────────
+FLIPUD          = 0.2   # vertical flip
+MIXUP           = 0.2   # blend two images + labels
+COPY_PASTE      = 0.1   # paste objects from other images
+DEGREES         = 15.0  # random rotation ±15°
+SHEAR           = 5.0   # shear distortion
+DROPOUT         = 0.2   # randomly disable 20% of neurons
+LABEL_SMOOTHING = 0.1   # soften labels (1.0 → 0.9) to reduce overconfidence
 
 
 def main() -> None:
@@ -41,16 +50,25 @@ def main() -> None:
     model = YOLO(BASE_MODEL)
 
     model.train(
-        data      = str(DATA_YAML),
-        epochs    = EPOCHS,
-        batch     = BATCH,
-        imgsz     = IMGSZ,
-        lr0       = LR0,
-        patience  = PATIENCE,
-        device    = DEVICE,
-        project   = str(PROJECT_DIR),
-        name      = RUN_NAME,
-        exist_ok  = True,
+        data            = str(DATA_YAML),
+        epochs          = EPOCHS,
+        batch           = BATCH,
+        imgsz           = IMGSZ,
+        lr0             = LR0,
+        patience        = PATIENCE,
+        device          = DEVICE,
+        project         = str(PROJECT_DIR),
+        name            = RUN_NAME,
+        exist_ok        = True,
+        # augmentation
+        flipud          = FLIPUD,
+        mixup           = MIXUP,
+        copy_paste      = COPY_PASTE,
+        degrees         = DEGREES,
+        shear           = SHEAR,
+        # regularization
+        dropout         = DROPOUT,
+        label_smoothing = LABEL_SMOOTHING,
     )
 
     wandb.finish()
