@@ -32,16 +32,22 @@ COLOR_SAME   = (0, 200, 0)    # green  — group, same class
 COLOR_MIXED  = (0, 0, 220)    # red    — group, mixed classes
 COLOR_ALONE  = (0, 200, 220)  # yellow — lone object
 
+CLASS_DISPLAY = {
+    "carton": "Dryckeskartong",
+    "tin":    "Konservburk",
+    "can":    "Pantburk",
+}
+
 CLASS_PLURAL = {
-    "carton": "cartons",
-    "tin":    "tins",
-    "can":    "cans",
+    "carton": "DRYCKESKARTONGER",
+    "tin":    "KONSERVBURKAR",
+    "can":    "PANTBURKAR",
 }
 
 LEGEND_ITEMS = [
-    (COLOR_SAME,  "Same class (group)"),
-    (COLOR_MIXED, "Mixed classes (group)"),
-    (COLOR_ALONE, "Lone object"),
+    (COLOR_SAME,  "SORTERAT — samma klass"),
+    (COLOR_MIXED, "OSORTERAT — blandat"),
+    (COLOR_ALONE, "ENSAMT objekt"),
 ]
 
 
@@ -103,6 +109,14 @@ def draw_fps(frame, fps):
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2, cv2.LINE_AA)
 
 
+def _put_label(frame, text, x1, y1, color):
+    """Draw a filled-background label above (x1, y1)."""
+    (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.55, 1)
+    cv2.rectangle(frame, (x1, y1 - th - 6), (x1 + tw + 4, y1), color, -1)
+    cv2.putText(frame, text, (x1 + 2, y1 - 4),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 1, cv2.LINE_AA)
+
+
 def draw_group(frame, group_indices, detections):
     classes = [detections[i]["class_name"] for i in group_indices]
     all_same = len(set(classes)) == 1
@@ -115,6 +129,7 @@ def draw_group(frame, group_indices, detections):
     else:
         color = COLOR_MIXED
 
+    # Draw boxes (and per-object labels for lone/mixed)
     for i in group_indices:
         det = detections[i]
         x1, y1, x2, y2 = det["box"]
@@ -123,21 +138,22 @@ def draw_group(frame, group_indices, detections):
         cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
         cv2.circle(frame, (cx, cy), 4, color, -1)
 
-        if lone:
-            label = det["class_name"]
-        elif all_same:
-            label = CLASS_PLURAL.get(det["class_name"], det["class_name"] + "s")
+        if all_same and not lone:
+            # No per-object label for sorted groups — one group label drawn below
+            pass
         else:
-            label = det["class_name"]
+            display_name = CLASS_DISPLAY.get(det["class_name"], det["class_name"])
+            conf_str = f"{det['conf']:.2f}"
+            _put_label(frame, f"{display_name} {conf_str}", x1, y1, color)
 
-        conf_str = f"{det['conf']:.2f}"
-        text = f"{label} {conf_str}"
-        (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.55, 1)
-        cv2.rectangle(frame, (x1, y1 - th - 6), (x1 + tw + 4, y1), color, -1)
-        cv2.putText(frame, text, (x1 + 2, y1 - 4),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 1, cv2.LINE_AA)
+    # For sorted groups: one plural label above the collective bounding box
+    if all_same and not lone:
+        all_x1 = min(detections[i]["box"][0] for i in group_indices)
+        all_y1 = min(detections[i]["box"][1] for i in group_indices)
+        plural = CLASS_PLURAL.get(classes[0], classes[0].upper() + "S")
+        _put_label(frame, plural, all_x1, all_y1, color)
 
-    # draw lines between grouped objects
+    # Draw lines between grouped objects
     if not lone:
         pts = [centroid(detections[i]["box"]) for i in group_indices]
         for k in range(len(pts) - 1):
