@@ -1,25 +1,25 @@
 """
-Splits TrashDataset into train/val/test (80/10/10) and generates data.yaml.
-Only image-label pairs are included (unpaired images are skipped).
+Delar upp TrashDataset i train/val/test (80/10/10) och skapar data.yaml.
+Bara bild-label-par inkluderas — bilder utan label-fil hoppas över.
 """
 
 import random
 import shutil
 from pathlib import Path
 
-# ── Paths ──────────────────────────────────────────────────────────────────────
-DATASET_DIR = Path.home() / "code" / "TrashDataset"
+# ── Sökvägar ───────────────────────────────────────────────────────────────────
+DATASET_DIR = Path(r"C:\Users\sandb\Documents\TrashDataset")
 IMAGES_DIR  = DATASET_DIR / "images"
 LABELS_DIR  = DATASET_DIR / "labels"
 SPLIT_DIR   = DATASET_DIR / "split"
 
-# ── Config ─────────────────────────────────────────────────────────────────────
-RANDOM_SEED  = 42
+# ── Konfiguration ──────────────────────────────────────────────────────────────
+RANDOM_SEED  = 42   # fast seed för reproducerbar uppdelning
 TRAIN_RATIO  = 0.80
 VAL_RATIO    = 0.10
-# TEST_RATIO  = 0.10  (remainder)
+# TEST_RATIO  = 0.10  (resten)
 
-# Class names must match classes.txt index order:
+# Klassnamn måste matcha index-ordningen i classes.txt:
 #   0 = Dryckeskartong → carton
 #   1 = Konservburk    → tin
 #   2 = Pantburk       → can
@@ -27,7 +27,7 @@ CLASS_NAMES = ["carton", "tin", "can"]
 
 
 def collect_pairs() -> list[Path]:
-    """Return image paths that have a matching label file."""
+    """Returnerar bara de bilder som har en matchande label-fil."""
     images = sorted(IMAGES_DIR.glob("*.jpg")) + sorted(IMAGES_DIR.glob("*.png"))
     paired = [img for img in images if (LABELS_DIR / img.with_suffix(".txt").name).exists()]
     skipped = len(list(IMAGES_DIR.glob("*"))) - len(paired)
@@ -36,6 +36,7 @@ def collect_pairs() -> list[Path]:
 
 
 def split(pairs: list[Path]) -> tuple[list, list, list]:
+    """Blandar och delar upp bilderna i train/val/test."""
     rng = random.Random(RANDOM_SEED)
     shuffled = pairs[:]
     rng.shuffle(shuffled)
@@ -46,6 +47,7 @@ def split(pairs: list[Path]) -> tuple[list, list, list]:
 
 
 def copy_split(pairs: list[Path], subset: str) -> None:
+    """Kopierar bilder och labels till rätt undermapp (train/val/test)."""
     img_dst = SPLIT_DIR / subset / "images"
     lbl_dst = SPLIT_DIR / subset / "labels"
     img_dst.mkdir(parents=True, exist_ok=True)
@@ -57,6 +59,7 @@ def copy_split(pairs: list[Path], subset: str) -> None:
 
 
 def write_yaml() -> None:
+    """Skapar data.yaml som YOLO använder för att hitta datasetet."""
     yaml_path = SPLIT_DIR / "data.yaml"
     lines = [
         f"path: {SPLIT_DIR}",
@@ -73,6 +76,7 @@ def write_yaml() -> None:
 
 
 def main() -> None:
+    # Rensa gammal split om den finns
     if SPLIT_DIR.exists():
         shutil.rmtree(SPLIT_DIR)
         print(f"Removed existing {SPLIT_DIR}")

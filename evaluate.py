@@ -1,16 +1,16 @@
 """
-Evaluates the trained model against the test split.
-Run: python evaluate.py
+Utvärderar den tränade modellen mot test-spliten.
+Kör: python evaluate.py
 """
 
 from pathlib import Path
 
-# ── Paths ──────────────────────────────────────────────────────────────────────
+# ── Sökvägar ───────────────────────────────────────────────────────────────────
 MODEL_PATH    = Path(__file__).parent / "runs" / "trash_v1" / "weights" / "best.pt"
-DATA_YAML     = Path.home() / "code" / "TrashDataset" / "split" / "data.yaml"
+DATA_YAML     = Path(r"C:\Users\sandb\Documents\TrashDataset\split\data.yaml")
 OUTPUT_DIR    = Path(__file__).parent / "runs" / "trash_v1" / "eval"
 
-# ── Config ─────────────────────────────────────────────────────────────────────
+# ── Konfiguration ──────────────────────────────────────────────────────────────
 DEVICE = "cpu"
 IMGSZ  = 640
 BATCH  = 16
@@ -30,6 +30,7 @@ def main() -> None:
 
     model = YOLO(str(MODEL_PATH))
 
+    # Kör validering mot test-spliten
     metrics = model.val(
         data    = str(DATA_YAML),
         split   = "test",
@@ -44,15 +45,15 @@ def main() -> None:
     class_names = model.names  # {0: 'carton', 1: 'tin', 2: 'can'}
     nc = len(class_names)
 
-    # ── Per-class metrics ──────────────────────────────────────────────────────
+    # ── Resultat per klass ─────────────────────────────────────────────────────
     print("\n── Evaluation results ─────────────────────────────────────")
     print(f"{'Class':<12} {'mAP@50':>8} {'mAP@50-95':>10} {'Precision':>10} {'Recall':>8}")
     print("─" * 52)
 
-    map50     = metrics.box.ap50          # shape (nc,)
-    map50_95  = metrics.box.ap            # shape (nc,)
-    precision = metrics.box.p             # shape (nc,)
-    recall    = metrics.box.r             # shape (nc,)
+    map50     = metrics.box.ap50   # mAP@50 per klass
+    map50_95  = metrics.box.ap     # mAP@50-95 per klass
+    precision = metrics.box.p      # precision per klass
+    recall    = metrics.box.r      # recall per klass
 
     for i in range(nc):
         print(f"{class_names[i]:<12} {map50[i]:>8.3f} {map50_95[i]:>10.3f} "
@@ -62,8 +63,8 @@ def main() -> None:
     print(f"{'all':<12} {metrics.box.map50:>8.3f} {metrics.box.map:>10.3f} "
           f"{metrics.box.mp:>10.3f} {metrics.box.mr:>8.3f}")
 
-    # ── Confusion matrix ───────────────────────────────────────────────────────
-    cm = metrics.confusion_matrix.matrix  # numpy array (nc+1, nc+1)
+    # ── Konfusionsmatris ───────────────────────────────────────────────────────
+    cm = metrics.confusion_matrix.matrix  # numpy-array (nc+1, nc+1)
     labels = [class_names[i] for i in range(nc)] + ["background"]
 
     fig, ax = plt.subplots(figsize=(6, 5))
@@ -76,6 +77,8 @@ def main() -> None:
         title="Confusion Matrix (test split)",
     )
     plt.setp(ax.get_xticklabels(), rotation=45, ha="right")
+
+    # Skriv antal i varje cell
     for i in range(len(labels)):
         for j in range(len(labels)):
             ax.text(j, i, int(cm[i, j]), ha="center", va="center",
@@ -84,7 +87,7 @@ def main() -> None:
 
     cm_path = OUTPUT_DIR / "confusion_matrix.png"
     fig.savefig(cm_path, dpi=150)
-    print(f"\nConfusion matrix saved to: {cm_path}")
+    print(f"\nKonfusionsmatris sparad till: {cm_path}")
 
 
 if __name__ == "__main__":
